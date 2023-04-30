@@ -1,14 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
-
   <ItemGroup>
+    <Compile Include="Domain.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Fable.Remoting.Giraffe" Version="5.14.0" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.1.23" />
@@ -18,9 +16,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="7.0.5" />
     <PackageReference Include="Saturn" Version="0.16.1" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\BudgetTracker.Shared\BudgetTracker.Shared.fsproj" />
   </ItemGroup>
-
 </Project>
