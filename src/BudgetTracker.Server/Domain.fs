@@ -132,6 +132,7 @@ module Budget =
     budget.Categories
     |> List.choose Category.chooseAllocated
     |> List.map AllocatedCategory.createTopCategory
+    |> List.sortByDescending (fun topCategory -> topCategory.TotalSpent)
     |> List.truncate amount
 
   let monthlyReset budget =
