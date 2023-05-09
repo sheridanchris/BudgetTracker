@@ -22,6 +22,15 @@ type CreateExpenseCommand = {
   ExpenseDetails: string
 }
 
+type UserModel = {
+  NameIdentifier: string
+  EmailAddress: string
+}
+
+type CurrentUser =
+  | NotAuthenticated
+  | Authenticated of UserModel
+
 type RpcResult<'a> =
   | Success of 'a
   | NoPermission
@@ -34,6 +43,8 @@ let errorMessage rpcResult =
   | ErrorMessage errorMessage -> Some errorMessage
 
 type AsyncRpcResult<'a> = Async<RpcResult<'a>>
+
+type PublicApi = { GetUser: unit -> Async<CurrentUser> }
 
 type SecuredApi = {
   GetBudgets: unit -> Async<Budget list>

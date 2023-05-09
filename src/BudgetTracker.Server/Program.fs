@@ -84,20 +84,29 @@ let googleAuthenticate: HttpHandler =
       return! next ctx
     }
 
-let remotingHandler: HttpHandler =
+let publicApi: HttpHandler =
   Remoting.createApi ()
-  |> Remoting.fromContext CompositionRoot.getUserId
+  |> Remoting.fromContext CompositionRoot.createPublicApi
   |> Remoting.buildHttpHandler
+
+let securedApi: HttpHandler =
+  Remoting.createApi ()
+  |> Remoting.fromContext CompositionRoot.createSecuredApi
+  |> Remoting.buildHttpHandler
+
+let requiresAuth: HttpHandler =
+  setStatusCode 401 >=> text "You are not authenticated!"
 
 let router: HttpHandler =
   choose [
-    remotingHandler
+    publicApi
+    requiresAuth >=> securedApi
     route "/api/authenticate" >=> GET >=> googleAuthenticate
   ]
 
 let app =
   application {
-    url "http://[::]:5000"
+    url "http://0.0.0.0:5000"
     service_config configureServices
     app_config (fun builder -> builder.UseAuthentication().UseAuthorization())
     use_router router

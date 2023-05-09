@@ -7,16 +7,31 @@ open Marten
 open Remote
 open DomainLogic
 
-let getUserId (ctx: HttpContext) =
+let claim (claimType: string) (ctx: HttpContext) =
   ctx.User.Claims
-  |> Seq.tryFind (fun claim -> claim.Type = ClaimTypes.NameIdentifier)
+  |> Seq.tryFind (fun claim -> claim.Type = claimType)
   |> Option.map (fun claim -> claim.Value)
+
+let createPublicApi (httpContext: HttpContext) = {
+  GetUser =
+    fun () ->
+      async {
+        return
+          if httpContext.User.Identity.IsAuthenticated then
+            Authenticated {
+              NameIdentifier = httpContext |> claim ClaimTypes.NameIdentifier |> Option.defaultValue ""
+              EmailAddress = httpContext |> claim ClaimTypes.Email |> Option.defaultValue ""
+            }
+          else
+            NotAuthenticated
+      }
+}
 
 let createSecuredApi (httpContext: HttpContext) =
   let querySession = httpContext.GetService<IQuerySession>()
   let documentSession = httpContext.GetService<IDocumentSession>()
 
-  match getUserId httpContext with
+  match claim ClaimTypes.NameIdentifier httpContext with
   | None -> {
       GetBudgets = fun () -> Async.singleton []
       CreateBudget = fun _ -> Async.singleton NoPermission
