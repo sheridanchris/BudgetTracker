@@ -1,6 +1,6 @@
-module Domain
+module DomainLogic
 
-open System
+open Domain
 
 // zero-based-budgeting - https://www.investopedia.com/terms/z/zbb.asp
 // ability to create a MONTHLY budget with Estimated Monthly Income
@@ -13,36 +13,10 @@ open System
 // TODO: These budget functions are for the current month's budget, it gets reset every month... is that clear?
 // TODO: Figure out how to model category & allocations per month
 
-type Expense = {
-  Amount: decimal
-  Reason: string
-  OccuredAt: DateTime
-}
-
-type AvailableCategory = { Name: string }
-
-type AllocatedCategory = {
-  Name: string
-  Allocation: decimal
-  Expenses: Expense list
-}
-
-type Category =
-  | AvailableCategory of AvailableCategory
-  | AllocatedCategory of AllocatedCategory
-
-type Budget = {
-  Id: Guid
-  Name: string
-  Description: string option
-  EstimatedMonthlyIncome: decimal
-  Categories: Category list
-}
-
-type TopCategory = {
-  CategoryName: string
-  TotalSpent: decimal
-}
+// type TopCategory = {
+//   CategoryName: string
+//   TotalSpent: decimal
+// }
 
 [<RequireQualifiedAccessAttribute>]
 module Category =
@@ -52,7 +26,6 @@ module Category =
       "Groceries"
       "Food"
       "Vacations"
-      "Vehicle"
     ]
 
     let createNewCategory name = AvailableCategory { Name = name }
@@ -70,27 +43,43 @@ module Category =
 
 [<RequireQualifiedAccess>]
 module AllocatedCategory =
-  let sumExpenses allocatedCategory =
-    allocatedCategory.Expenses |> List.sumBy (fun expense -> expense.Amount)
-
-  let isOverSpent allocatedCategory =
-    let totalExpenses = sumExpenses allocatedCategory
-    totalExpenses > allocatedCategory.Allocation
-
-  let createTopCategory allocatedCategory =
-    let totalSpent = sumExpenses allocatedCategory
-
-    {
-      CategoryName = allocatedCategory.Name
-      TotalSpent = totalSpent
+  let create allocation (availableCategory: AvailableCategory) =
+    AllocatedCategory {
+      Name = availableCategory.Name
+      Allocation = allocation
+      Expenses = []
     }
+
+// let sumExpenses allocatedCategory =
+//   allocatedCategory.Expenses |> List.sumBy (fun expense -> expense.Amount)
+
+// let isOverSpent allocatedCategory =
+//   let totalExpenses = sumExpenses allocatedCategory
+//   totalExpenses > allocatedCategory.Allocation
+
+// let createTopCategory allocatedCategory =
+//   let totalSpent = sumExpenses allocatedCategory
+
+//   {
+//     CategoryName = allocatedCategory.Name
+//     TotalSpent = totalSpent
+//   }
 
 [<RequireQualifiedAccessAttribute>]
 module Budget =
-  let sumExpensesInBudget budget =
-    budget.Categories
-    |> List.choose Category.chooseAllocated
-    |> List.sumBy AllocatedCategory.sumExpenses
+  let create id ownerId name description estimatedMonthlyIncome = {
+    Id = id
+    OwnerId = ownerId
+    Name = name
+    Description = description
+    EstimatedMonthlyIncome = estimatedMonthlyIncome
+    Categories = Category.defaultCategories
+  }
+
+  // let sumExpensesInBudget budget =
+  //   budget.Categories
+  //   |> List.choose Category.chooseAllocated
+  //   |> List.sumBy AllocatedCategory.sumExpenses
 
   let doesCategoryExist categoryName budget =
     budget.Categories
@@ -102,6 +91,16 @@ module Budget =
     else
       let category = AvailableCategory { Name = name }
       Ok { budget with Categories = category :: budget.Categories }
+
+  // let totalAllocations budget =
+  //   budget.Categories
+  //   |> List.choose Category.chooseAllocated
+  //   |> List.sumBy AllocatedCategory.sumExpenses
+
+  // let remainingLeftForAllocation budget =
+  //   let totalAllocations = totalAllocations budget
+  //   let remaining = budget.EstimatedMonthlyIncome - totalAllocations
+  //   max 0m remaining
 
   let createOrUpdateAllocatedCategory categoryName allocation budget =
     let createNewAllocatedCategory () =
@@ -128,12 +127,34 @@ module Budget =
 
     { budget with Categories = categories }
 
-  let topCategories amount budget =
-    budget.Categories
-    |> List.choose Category.chooseAllocated
-    |> List.map AllocatedCategory.createTopCategory
-    |> List.sortByDescending (fun topCategory -> topCategory.TotalSpent)
-    |> List.truncate amount
+  let createExpense categoryName amount reason nowUtc budget =
+    // TODO: This tells me nothing about possible errors, "category does not exist."
+    {
+      budget with
+          Categories =
+            budget.Categories
+            |> List.map (fun category ->
+              match category with
+              | AllocatedCategory category when category.Name = categoryName ->
+                AllocatedCategory {
+                  category with
+                      Expenses =
+                        {
+                          Amount = amount
+                          Reason = reason
+                          OccuredAt = nowUtc
+                        }
+                        :: category.Expenses
+                }
+              | _ -> category)
+    }
+
+  // let topCategories amount budget =
+  //   budget.Categories
+  //   |> List.choose Category.chooseAllocated
+  //   |> List.map AllocatedCategory.createTopCategory
+  //   |> List.sortByDescending (fun topCategory -> topCategory.TotalSpent)
+  //   |> List.truncate amount
 
   let monthlyReset budget =
     let resetCategory category =

@@ -1,6 +1,7 @@
 ﻿open System
 open System.Text.Json.Serialization
 open Fable.Remoting.Server
+open Fable.Remoting.Giraffe
 open Marten
 open Marten.Services
 open Microsoft.AspNetCore.Authentication
@@ -13,11 +14,13 @@ open Microsoft.Extensions.Configuration
 open Weasel.Core
 open Giraffe
 open Saturn
+open Domain
 
 let configuration = ConfigurationBuilder().AddEnvironmentVariables().Build()
 
 let configureMarten (storeOptions: StoreOptions) =
   storeOptions.Connection(configuration.GetConnectionString("Postgresql"))
+  storeOptions.RegisterDocumentType<Budget>()
 
   let serializer =
     SystemTextJsonSerializer(EnumStorage = EnumStorage.AsString, Casing = Casing.CamelCase)
@@ -81,8 +84,16 @@ let googleAuthenticate: HttpHandler =
       return! next ctx
     }
 
+let remotingHandler: HttpHandler =
+  Remoting.createApi ()
+  |> Remoting.fromContext CompositionRoot.getUserId
+  |> Remoting.buildHttpHandler
+
 let router: HttpHandler =
-  choose [ route "/api/authenticate" >=> GET >=> googleAuthenticate ]
+  choose [
+    remotingHandler
+    route "/api/authenticate" >=> GET >=> googleAuthenticate
+  ]
 
 let app =
   application {
