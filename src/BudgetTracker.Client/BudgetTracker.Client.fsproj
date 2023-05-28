@@ -6,14 +6,26 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Remoting.fs" />
+    <Compile Include="Extensions.fs" />
+    <Compile Include="DomainLogic.fs" />
+    <Compile Include="Components.fs" />
+    <Compile Include="ApplicationContext.fs" />
+    <Compile Include="Pages\NotFoundPage.fs" />
+    <Compile Include="Pages\UnauthorizedPage.fs" />
+    <Compile Include="Pages\HomePage.fs" />
+    <Compile Include="Pages\ViewBudgetPage.fs" />
+    <Compile Include="Pages\CreateBudgetPage.fs" />
+    <Compile Include="Pages\CategoriesPage.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Fable.Remoting.Client" Version="7.25.0" />
-    <PackageReference Include="Sutil" Version="2.0.9" />
+    <PackageReference Include="Sutil" Version="2.0.10" />
     <PackageReference Include="Sutil.DaisyUI" Version="0.0.1" />
     <PackageReference Include="Sutil.Router" Version="0.0.2" />
+    <PackageReference Update="FSharp.Core" Version="7.0.200" />
   </ItemGroup>
 
   <ItemGroup>

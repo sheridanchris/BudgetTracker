@@ -162,6 +162,6 @@ module Budget =
 
     {
       budget with
-          EstimatedMonthlyIncome = 0.00m
+          EstimatedMonthlyIncome = 0.00
           Categories = budget.Categories |> List.map resetCategory
     }

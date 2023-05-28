@@ -10,4 +10,8 @@
     <Compile Include="Remote.fs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Validus" Version="4.1.2" />
+  </ItemGroup>
+
 </Project>

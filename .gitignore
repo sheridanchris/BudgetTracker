@@ -707,3 +707,4 @@ fable_modules/
 .fable-build/
 tailwind.css
 *.fs.js
+dev_data/

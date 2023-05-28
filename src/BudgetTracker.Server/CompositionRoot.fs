@@ -12,15 +12,29 @@ let claim (claimType: string) (ctx: HttpContext) =
   |> Seq.tryFind (fun claim -> claim.Type = claimType)
   |> Option.map (fun claim -> claim.Value)
 
+let claimOrEmptyString (claimType: string) (ctx: HttpContext) =
+  claim claimType ctx |> Option.defaultValue ""
+
+let validateOrFail validationF =
+  match validationF () with
+  | Ok _ -> ()
+  | Error _ -> failwith "Validation errors."
+
 let createPublicApi (httpContext: HttpContext) = {
   GetUser =
     fun () ->
       async {
         return
           if httpContext.User.Identity.IsAuthenticated then
+            printfn
+              "User claims: %A"
+              (httpContext.User.Claims
+               |> Seq.map (fun claim -> $"{claim.Type}: {claim.Value}")
+               |> String.concat ",")
+
             Authenticated {
-              NameIdentifier = httpContext |> claim ClaimTypes.NameIdentifier |> Option.defaultValue ""
-              EmailAddress = httpContext |> claim ClaimTypes.Email |> Option.defaultValue ""
+              NameIdentifier = httpContext |> claimOrEmptyString ClaimTypes.NameIdentifier
+              EmailAddress = httpContext |> claimOrEmptyString ClaimTypes.Email
             }
           else
             NotAuthenticated
@@ -42,6 +56,8 @@ let createSecuredApi (httpContext: HttpContext) =
       GetBudgets = fun () -> DataAccess.getBudgetForUser querySession userId |> Async.map Seq.toList
       CreateBudget =
         fun command ->
+          validateOrFail command.Validate
+
           async {
             let budgetId = Guid.NewGuid()
 
@@ -56,29 +72,33 @@ let createSecuredApi (httpContext: HttpContext) =
           async {
             let! budget = DataAccess.getBudgetById querySession command.BudgetId
 
-            return
-              match budget with
-              | None -> NoPermission
-              | Some budget when budget.OwnerId <> userId -> NoPermission
-              | Some budget ->
+            match budget with
+            | None -> return NoPermission
+            | Some budget when budget.OwnerId <> userId -> return NoPermission
+            | Some budget ->
+              let newBudget =
                 budget
                 |> Budget.createOrUpdateAllocatedCategory command.CategoryName command.Allocation
-                |> Success
+
+              do! DataAccess.saveBudget documentSession newBudget
+              return Success newBudget
           }
       CreateExpense =
         fun command ->
           async {
             let! budget = DataAccess.getBudgetById querySession command.BudgetId
 
-            return
-              match budget with
-              | None -> NoPermission
-              | Some budget when budget.OwnerId <> userId -> NoPermission
-              | Some budget ->
-                let now = DateTime.UtcNow
+            match budget with
+            | None -> return NoPermission
+            | Some budget when budget.OwnerId <> userId -> return NoPermission
+            | Some budget ->
+              let now = DateTime.UtcNow
 
+              let newBudget =
                 budget
                 |> Budget.createExpense command.CategoryName command.ExpenseAmount command.ExpenseDetails now
-                |> Success
+
+              do! DataAccess.saveBudget documentSession newBudget
+              return Success newBudget
           }
     }

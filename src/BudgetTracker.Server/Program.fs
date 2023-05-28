@@ -66,15 +66,6 @@ let configureServices (serviceCollection: IServiceCollection) =
 
   serviceCollection
 
-let routeBuilder (typeName: string) (methodName: string) = $"/api/{typeName}/{methodName}"
-
-let errorHandler (ex: Exception) (routeInfo: RouteInfo<HttpContext>) =
-  Propagate {|
-    path = routeInfo.path
-    msg = ex.Message
-    stackTrace = ex.StackTrace
-  |}
-
 let googleAuthenticate: HttpHandler =
   fun next (ctx: HttpContext) ->
     task {
@@ -84,24 +75,33 @@ let googleAuthenticate: HttpHandler =
       return! next ctx
     }
 
-let publicApi: HttpHandler =
+let routeBuilder = sprintf "/api/%s/%s"
+
+let errorHandler (ex: Exception) (routeInfo: RouteInfo<HttpContext>) =
+  Propagate {|
+    path = routeInfo.path
+    msg = ex.Message
+    stackTrace = ex.StackTrace
+  |}
+
+let buildRemoteHandler (f: HttpContext -> 'a) : HttpHandler =
   Remoting.createApi ()
-  |> Remoting.fromContext CompositionRoot.createPublicApi
+  |> Remoting.withRouteBuilder routeBuilder
+  |> Remoting.withErrorHandler errorHandler
+  |> Remoting.fromContext f
   |> Remoting.buildHttpHandler
 
-let securedApi: HttpHandler =
-  Remoting.createApi ()
-  |> Remoting.fromContext CompositionRoot.createSecuredApi
-  |> Remoting.buildHttpHandler
+let publicApi: HttpHandler = buildRemoteHandler CompositionRoot.createPublicApi
+let securedApi: HttpHandler = buildRemoteHandler CompositionRoot.createSecuredApi
 
-let requiresAuth: HttpHandler =
+let authFailure: HttpHandler =
   setStatusCode 401 >=> text "You are not authenticated!"
 
 let router: HttpHandler =
   choose [
     publicApi
-    requiresAuth >=> securedApi
     route "/api/authenticate" >=> GET >=> googleAuthenticate
+    requiresAuthentication authFailure >=> securedApi
   ]
 
 let app =
@@ -110,6 +110,7 @@ let app =
     service_config configureServices
     app_config (fun builder -> builder.UseAuthentication().UseAuthorization())
     use_router router
+    use_static "public"
   }
 
 run app
