@@ -26,12 +26,6 @@ let createPublicApi (httpContext: HttpContext) = {
       async {
         return
           if httpContext.User.Identity.IsAuthenticated then
-            printfn
-              "User claims: %A"
-              (httpContext.User.Claims
-               |> Seq.map (fun claim -> $"{claim.Type}: {claim.Value}")
-               |> String.concat ",")
-
             Authenticated {
               NameIdentifier = httpContext |> claimOrEmptyString ClaimTypes.NameIdentifier
               EmailAddress = httpContext |> claimOrEmptyString ClaimTypes.Email
@@ -51,6 +45,7 @@ let createSecuredApi (httpContext: HttpContext) =
       CreateBudget = fun _ -> Async.singleton NoPermission
       AllocateCategory = fun _ -> Async.singleton NoPermission
       CreateExpense = fun _ -> Async.singleton NoPermission
+      CreateCategory = fun _ -> Async.singleton NoPermission
     }
   | Some userId -> {
       GetBudgets = fun () -> DataAccess.getBudgetForUser querySession userId |> Async.map Seq.toList
@@ -100,5 +95,22 @@ let createSecuredApi (httpContext: HttpContext) =
 
               do! DataAccess.saveBudget documentSession newBudget
               return Success newBudget
+          }
+      CreateCategory =
+        fun command ->
+          async {
+            let! budget = DataAccess.getBudgetById querySession command.BudgetId
+
+            match budget with
+            | None -> return NoPermission
+            | Some budget when budget.OwnerId <> userId -> return NoPermission
+            | Some budget ->
+              let newBudget = budget |> Budget.createCategory command.CategoryName
+
+              match newBudget with
+              | Error error -> return ErrorMessage error
+              | Ok newBudget ->
+                do! DataAccess.saveBudget documentSession newBudget
+                return Success newBudget
           }
     }

@@ -60,6 +60,13 @@ let view (budget: Budget) =
       ]
     ]
 
+    Html.a [
+      Daisy.Button.buttonAttr
+      Daisy.Button.primary
+      Attr.text "Create Allocation"
+      Attr.href $"/#/budgets/{budget.Id}/allocate"
+    ]
+
     let categories = budget.Categories |> List.choose Category.chooseAllocated
 
     if List.isEmpty categories then

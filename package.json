@@ -3,7 +3,7 @@
   "scripts": {
     "postinstall": "dotnet tool restore",
     "start": "dotnet fable watch src/BudgetTracker.Client --run vite",
-    "clean": "dotnet fable clean --yes"
+    "clean": "dotnet fable clean src --yes"
   },
   "dependencies": {
     "autoprefixer": "^10.4.14",

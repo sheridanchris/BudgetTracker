@@ -14,7 +14,8 @@ type Page =
   | Home
   | CreateBudget
   | ViewBudget of {| budgetId: Guid |}
-  | Categories of {| budgetId: Guid |}
+  | Allocate of {| budgetId: Guid |}
+  | CreateCategory of {| budgetId: Guid |}
   | NotFound
   | Unauthorized
 
@@ -24,7 +25,8 @@ let parsePage url =
   | [ "budgets" ] -> Home
   | [ "budgets"; "create" ] -> CreateBudget
   | [ "budgets"; Route.Guid budgetId ] -> ViewBudget {| budgetId = budgetId |}
-  | [ "budgets"; Route.Guid budgetId; "categories" ] -> Categories {| budgetId = budgetId |}
+  | [ "budgets"; Route.Guid budgetId; "allocate" ] -> Allocate {| budgetId = budgetId |}
+  | [ "budgets"; Route.Guid budgetId; "create_category" ] -> CreateCategory {| budgetId = budgetId |}
   | _ -> NotFound
 
 let requiresAuthentication page =
@@ -34,7 +36,8 @@ let requiresAuthentication page =
   | Unauthorized -> false
   | CreateBudget
   | ViewBudget _
-  | Categories _ -> true
+  | Allocate _
+  | CreateCategory _ -> true
 
 type Model = { CurrentPage: Page }
 
@@ -68,7 +71,10 @@ let view () =
     Navigable.listenLocation (Router.getCurrentUrl >> parsePage >> SetCurrentPage >> dispatch)
 
   Html.div [
-    disposeOnUnmount [ model; globalContext ]
+    disposeOnUnmount [
+      model
+      globalContext
+    ]
     Attr.className "h-screen w-full"
 
     Daisy.Navbar.navbar [
@@ -108,7 +114,8 @@ let view () =
         | Home -> HomePage.view ()
         | CreateBudget -> CreateBudgetPage.view ()
         | ViewBudget info -> renderBudgetOrNotFound info.budgetId ViewBudgetPage.view
-        | Categories info -> renderBudgetOrNotFound info.budgetId CategoriesPage.view
+        | Allocate info -> renderBudgetOrNotFound info.budgetId AllocatePage.view
+        | CreateCategory info -> renderBudgetOrNotFound info.budgetId CreateCategoryPage.view
         | NotFound -> NotFoundPage.view ()
         | Unauthorized -> UnauthorizedPage.view ())
   ]

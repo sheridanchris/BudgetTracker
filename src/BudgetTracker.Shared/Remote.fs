@@ -77,7 +77,7 @@ type PublicApi = { GetUser: unit -> Async<CurrentUser> }
 type SecuredApi = {
   GetBudgets: unit -> Async<Budget list>
   CreateBudget: CreateBudgetCommand -> AsyncRpcResult<Budget>
-  // CreateCategory: CreateCategoryCommand -> AsyncRpcResult<Budget>
+  CreateCategory: CreateCategoryCommand -> AsyncRpcResult<Budget>
   AllocateCategory: CreateAllocatedCategoryCommand -> AsyncRpcResult<Budget>
   CreateExpense: CreateExpenseCommand -> AsyncRpcResult<Budget>
 }

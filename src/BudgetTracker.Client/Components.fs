@@ -6,46 +6,41 @@ open Sutil.CoreElements
 open Sutil.DaisyUI
 open System
 
-let inline validationComponent
+let validatedDaisyInput
   (
     value: IObservable<'value>,
     onValueChanged: 'value -> unit,
     validationErrors: IObservable<string list>,
-    elementFactory: seq<SutilElement> -> SutilElement,
-    successClassName: string,
-    errorClassName: string,
     elements: seq<SutilElement>
   ) =
+  // Only display the validation error if the value has been changed from its default.
+  let hasValueBeenChanged = Store.make false
+
   fragment [
-    elementFactory [
-      Bind.toggleClass (validationErrors .> List.isEmpty, successClassName, errorClassName)
-      Attr.value (value, onValueChanged)
+    disposeOnUnmount [ hasValueBeenChanged ]
+
+    Daisy.Input.input [
+      Bind.onlyIf (
+        hasValueBeenChanged,
+        Bind.toggleClass (validationErrors .> List.isEmpty, "input-success", "input-error")
+      )
+      Attr.value (
+        value,
+        fun value ->
+          onValueChanged value
+          Store.set hasValueBeenChanged true
+      )
       yield! elements
     ]
-    Bind.optional (
-      validationErrors .> List.tryHead,
-      fun validationError ->
-        Html.p [
-          Attr.className "text-red-500"
-          Attr.text validationError
-        ]
+    Bind.onlyIf (
+      hasValueBeenChanged,
+      Bind.optional (
+        validationErrors .> List.tryHead,
+        fun validationError ->
+          Html.p [
+            Attr.className "text-red-500"
+            Attr.text validationError
+          ]
+      )
     )
   ]
-
-// TODO: This may not need to be _this_ generic.
-let inline validatedDaisyInput
-  (
-    value: IObservable<'value>,
-    onValueChanged: 'value -> unit,
-    validationErrors: IObservable<string list>,
-    inputElements: seq<SutilElement>
-  ) =
-  validationComponent (
-    value,
-    onValueChanged,
-    validationErrors,
-    Daisy.Input.input,
-    "input-success",
-    "input-error",
-    inputElements
-  )

@@ -1,4 +1,4 @@
-﻿module CategoriesPage
+﻿module AllocatePage
 
 open System
 open Domain
@@ -12,7 +12,7 @@ open ApplicationContext
 
 type Model = {
   BudgetId: Guid
-  SelectedCategoryName: string
+  SelectedCategoryName: string option
   AllocationAmount: float
   ErrorMessage: string option
 }
@@ -21,17 +21,24 @@ let categoryName model = model.SelectedCategoryName
 let allocationAmount model = model.AllocationAmount
 let errorMessage model = model.ErrorMessage
 
+let selectedCategory model =
+  match categoryName model with
+  | None -> []
+  | Some category -> List.singleton category
+
 type Msg =
-  | SetCategory of string
+  | SetCategory of string option
   | SetAllocation of float
   | Allocate
   | GotResponse of RpcResult<Budget>
   | GotException of exn
 
-let initialState (budgetId: Guid) =
+let initialState (budget: Budget) =
+  let selectedCategory = budget.Categories |> List.tryHead |> Option.map Category.name
+
   {
-    BudgetId = budgetId
-    SelectedCategoryName = ""
+    BudgetId = budget.Id
+    SelectedCategoryName = selectedCategory
     AllocationAmount = 0
     ErrorMessage = None
   },
@@ -42,16 +49,21 @@ let update msg model =
   | SetCategory categoryName -> { model with SelectedCategoryName = categoryName }, Cmd.none
   | SetAllocation allocation -> { model with AllocationAmount = allocation }, Cmd.none
   | Allocate ->
-    model,
-    Cmd.OfAsync.either
-      Remoting.securedApi.AllocateCategory
-      {
-        BudgetId = model.BudgetId
-        CategoryName = model.SelectedCategoryName
-        Allocation = model.AllocationAmount
-      }
-      GotResponse
-      GotException
+    let cmd =
+      match model.SelectedCategoryName with
+      | None -> Cmd.none
+      | Some categoryName ->
+        Cmd.OfAsync.either
+          Remoting.securedApi.AllocateCategory
+          {
+            BudgetId = model.BudgetId
+            CategoryName = categoryName
+            Allocation = model.AllocationAmount
+          }
+          GotResponse
+          GotException
+
+    model, cmd
   | GotResponse(Success budget) ->
     model,
     Cmd.batch [
@@ -63,7 +75,7 @@ let update msg model =
     { model with ErrorMessage = Some "Something went wrong with that request! Please try again." }, Cmd.none
 
 let view (budget: Budget) =
-  let model, dispatch = budget.Id |> Store.makeElmish initialState update ignore
+  let model, dispatch = budget |> Store.makeElmish initialState update ignore
 
   Html.div [
     disposeOnUnmount [ model ]
@@ -88,11 +100,11 @@ let view (budget: Budget) =
             Attr.for' "select-category"
             Daisy.Label.labelText "Category"
           ]
+          // TODO: Should this be a multi-select??? I think so.
           Daisy.Select.select [
-            Attr.id "select-category"
-            Bind.selected (model .> categoryName .> List.singleton, List.exactlyOne >> SetCategory >> dispatch)
-
             Daisy.Select.primary
+            Attr.id "select-category"
+            Bind.selected (model .> selectedCategory, List.tryExactlyOne >> SetCategory >> dispatch)
             for category in budget.Categories |> List.map Category.name do
               Html.option [
                 Attr.value category

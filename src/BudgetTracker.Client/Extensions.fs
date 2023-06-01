@@ -1,6 +1,8 @@
 [<AutoOpen>]
 module Extensions
 
+open Validus
+
 [<RequireQualifiedAccess>]
 module Bind =
   open System
@@ -17,3 +19,10 @@ module Bind =
       | None -> Html.none
       | Some value -> render value
     )
+
+[<RequireQualifiedAccess>]
+module ValidationResult =
+  let toMap validationResult =
+    match validationResult with
+    | Ok _ -> Map.empty
+    | Error errors -> ValidationErrors.toMap errors

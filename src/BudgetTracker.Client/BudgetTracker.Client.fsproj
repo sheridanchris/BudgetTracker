@@ -16,7 +16,8 @@
     <Compile Include="Pages\HomePage.fs" />
     <Compile Include="Pages\ViewBudgetPage.fs" />
     <Compile Include="Pages\CreateBudgetPage.fs" />
-    <Compile Include="Pages\CategoriesPage.fs" />
+    <Compile Include="Pages\AllocatePage.fs" />
+    <Compile Include="Pages\CreateCategoryPage.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
 

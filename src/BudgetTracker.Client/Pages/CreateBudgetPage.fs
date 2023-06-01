@@ -48,26 +48,25 @@ let descriptionFromInput description =
   else
     Some description
 
-let initialState () =
-  {
-    Command = {
-      Name = ""
-      Description = None
-      EstimatedMonthlyIncome = 1000.0
-    }
-    ErrorMessage = None
-    ValidationErrors = Map.empty
-  },
-  Cmd.none
-
 let updateCommand command model =
   {
     model with
         Command = command
-        ValidationErrors =
-          match command.Validate() with
-          | Ok _ -> Map.empty
-          | Error errors -> ValidationErrors.toMap errors
+        ValidationErrors = command.Validate() |> ValidationResult.toMap
+  },
+  Cmd.none
+
+let initialState () =
+  let command = {
+    Name = ""
+    Description = None
+    EstimatedMonthlyIncome = 1000.0
+  }
+
+  {
+    Command = command
+    ErrorMessage = None
+    ValidationErrors = command.Validate() |> ValidationResult.toMap
   },
   Cmd.none
 
@@ -76,7 +75,14 @@ let update msg model =
   | SetName name -> updateCommand { model.Command with Name = name } model
   | SetDescription description -> updateCommand { model.Command with Description = description } model
   | SetEstimatedMonthlyIncome income -> updateCommand { model.Command with EstimatedMonthlyIncome = income } model
-  | CreateBudget -> model, Cmd.OfAsync.either Remoting.securedApi.CreateBudget model.Command GotResponse GotException
+  | CreateBudget ->
+    let cmd =
+      if model.ValidationErrors = Map.empty then
+        Cmd.OfAsync.either Remoting.securedApi.CreateBudget model.Command GotResponse GotException
+      else
+        Cmd.none
+
+    model, cmd
   | GotResponse(Success budget) ->
     model,
     Cmd.batch [
@@ -127,7 +133,7 @@ let view () =
         Daisy.FormControl.formControl [
           Daisy.Label.label [
             Attr.for' "budget-description"
-            Daisy.Label.labelText "Description"
+            Daisy.Label.labelText "Description (optional)"
           ]
           Components.validatedDaisyInput (
             model .> description .> defaultEmptyString,

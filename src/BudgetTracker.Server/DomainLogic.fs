@@ -18,7 +18,7 @@ open Domain
 //   TotalSpent: decimal
 // }
 
-[<RequireQualifiedAccessAttribute>]
+[<RequireQualifiedAccess>]
 module Category =
   let defaultCategories =
     let categoryNames = [
@@ -50,22 +50,7 @@ module AllocatedCategory =
       Expenses = []
     }
 
-// let sumExpenses allocatedCategory =
-//   allocatedCategory.Expenses |> List.sumBy (fun expense -> expense.Amount)
-
-// let isOverSpent allocatedCategory =
-//   let totalExpenses = sumExpenses allocatedCategory
-//   totalExpenses > allocatedCategory.Allocation
-
-// let createTopCategory allocatedCategory =
-//   let totalSpent = sumExpenses allocatedCategory
-
-//   {
-//     CategoryName = allocatedCategory.Name
-//     TotalSpent = totalSpent
-//   }
-
-[<RequireQualifiedAccessAttribute>]
+[<RequireQualifiedAccess>]
 module Budget =
   let create id ownerId name description estimatedMonthlyIncome = {
     Id = id
@@ -75,11 +60,6 @@ module Budget =
     EstimatedMonthlyIncome = estimatedMonthlyIncome
     Categories = Category.defaultCategories
   }
-
-  // let sumExpensesInBudget budget =
-  //   budget.Categories
-  //   |> List.choose Category.chooseAllocated
-  //   |> List.sumBy AllocatedCategory.sumExpenses
 
   let doesCategoryExist categoryName budget =
     budget.Categories
@@ -91,16 +71,6 @@ module Budget =
     else
       let category = AvailableCategory { Name = name }
       Ok { budget with Categories = category :: budget.Categories }
-
-  // let totalAllocations budget =
-  //   budget.Categories
-  //   |> List.choose Category.chooseAllocated
-  //   |> List.sumBy AllocatedCategory.sumExpenses
-
-  // let remainingLeftForAllocation budget =
-  //   let totalAllocations = totalAllocations budget
-  //   let remaining = budget.EstimatedMonthlyIncome - totalAllocations
-  //   max 0m remaining
 
   let createOrUpdateAllocatedCategory categoryName allocation budget =
     let createNewAllocatedCategory () =
@@ -122,6 +92,9 @@ module Budget =
           | AllocatedCategory category when category.Name = categoryName -> reallocateCategory category
           | category -> category)
       else
+        // TODO: Should the category need to exist for allocations?
+        // right now, the frontend uses a select element to pick a category... this doesn't give them the option to ...
+        // create a new category.
         let category = createNewAllocatedCategory ()
         category :: budget.Categories
 
@@ -148,13 +121,6 @@ module Budget =
                 }
               | _ -> category)
     }
-
-  // let topCategories amount budget =
-  //   budget.Categories
-  //   |> List.choose Category.chooseAllocated
-  //   |> List.map AllocatedCategory.createTopCategory
-  //   |> List.sortByDescending (fun topCategory -> topCategory.TotalSpent)
-  //   |> List.truncate amount
 
   let monthlyReset budget =
     let resetCategory category =
